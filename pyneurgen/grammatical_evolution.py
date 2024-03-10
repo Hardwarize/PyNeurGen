@@ -277,14 +277,16 @@ class GrammaticalEvolution(object):
             if item.find('::=') >= 0:
                 key, values = item.split('::=')
                 key = key.strip()
-                bnf_dict[key] = strip_spaces(key, values)
+                # Remove empty symbol
+                bnf_dict[key] = [value for value in strip_spaces(key, values) if value != '']
             elif item:
                 values = bnf_dict[key]
                 values.extend(strip_spaces(key, item))
                 if key.startswith(STATEMENT_FORMAT):
                     #   Convert statements back to string
                     values = ['\n'.join(values)]
-                bnf_dict[key] = values
+                # Remove empty symbol
+                bnf_dict[key] = [value for value in values if value != '']
             else:
                 #   blank line
                 pass

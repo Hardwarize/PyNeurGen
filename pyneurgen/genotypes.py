@@ -447,8 +447,8 @@ class Genotype(object):
             logging.debug("Finished updating genotype...")
 
         return self._fitness
-
-    def _map_gene(self, external_starttime=None):
+    
+    def external_map_gene(self, external_starttime=None):
         """
         This function applies the genotype information to build a program.
         Mapping the variables into the search space is an initial load, and can
@@ -472,6 +472,53 @@ class Genotype(object):
             self.local_bnf[BNF_PROGRAM] = [
                     'mapping variables into program failed']
             program = self._map_variables(self.local_bnf['<S>'][0], True, external_starttime)
+            logging.debug("finished mapping variables to program...")
+            self.local_bnf[BNF_PROGRAM] = [program]
+            #print program[program.find('def'):]
+            logging.debug(program)
+            #self._execute_code(program)
+            logging.debug("==================================================")
+            return program
+        except:
+            #traceback.print_exc()
+            #a = raw_input("waiting")
+            logging.debug("program failed")
+            program = self.local_bnf['program'][0]
+            logging.debug("errors: %s", (self.errors))
+            logging.debug(program)
+            #logging.debug(traceback.print_exc())
+            logging.debug(traceback.format_exc())
+            logging.debug("end of failure report")
+            #a = raw_input("Program failed")
+            #if a == "stop":
+                #raise ValueError("Program halted")
+
+        #self._fitness = float(self.local_bnf['<fitness>'][0])
+
+    def _map_gene(self):
+        """
+        This function applies the genotype information to build a program.
+        Mapping the variables into the search space is an initial load, and can
+        also iteratively accept values as the program that has been created
+        executes via the runtime_resolve function.
+
+        If for any reason the mapping process fails to create a viable
+        program, or it takes too long, then the process is aborted and the
+        fitness_fail value is applied instead.
+
+        This function uses the print command to show the program that has been
+        generated as well as print the fitness value.  It is expected that this
+        will be converted to a more useful logging system at some point.
+
+        """
+
+        self.local_bnf['<fitness>'] = [str(self._fitness_fail)]
+        try:
+            logging.debug("==================================================")
+            logging.debug("mapping variables to program...")
+            self.local_bnf[BNF_PROGRAM] = [
+                    'mapping variables into program failed']
+            program = self._map_variables(self.local_bnf['<S>'][0], True)
             logging.debug("finished mapping variables to program...")
             self.local_bnf[BNF_PROGRAM] = [program]
             #print program[program.find('def'):]
