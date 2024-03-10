@@ -40,8 +40,9 @@ BNF_PROGRAM = 'program'
 TIMEOUT_PROG_BUILD = 0
 TIMEOUT_PROG_EXECUTE = 1
 
-DEFAULT_LOG_FILE = 'pyneurgen.log'
-DEFAULT_LOG_LEVEL = logging.INFO
+#DEFAULT_LOG_FILE = 'pyneurgen.log'
+DEFAULT_LOG_FILE = None
+DEFAULT_LOG_LEVEL = logging.DEBUG
 
 logging.basicConfig(format='%(asctime)s %(message)s',
                     filename=DEFAULT_LOG_FILE,
@@ -269,7 +270,7 @@ class Genotype(object):
 
         return str(value)
 
-    def _map_variables(self, program, check_stoplist):
+    def _map_variables(self, program, check_stoplist, external_starttime=None):
         """
         This function looks for a variable in the form of <variable>.  If
         check_stoplist is True, then there will be a check to determine if it
@@ -292,6 +293,9 @@ class Genotype(object):
                     status = True
 
             return status
+        
+        if external_starttime:
+            self.starttime = external_starttime
 
         self.errors = []
         incomplete = True
@@ -444,7 +448,7 @@ class Genotype(object):
 
         return self._fitness
 
-    def _map_gene(self):
+    def _map_gene(self, external_starttime=None):
         """
         This function applies the genotype information to build a program.
         Mapping the variables into the search space is an initial load, and can
@@ -467,7 +471,7 @@ class Genotype(object):
             logging.debug("mapping variables to program...")
             self.local_bnf[BNF_PROGRAM] = [
                     'mapping variables into program failed']
-            program = self._map_variables(self.local_bnf['<S>'][0], True)
+            program = self._map_variables(self.local_bnf['<S>'][0], True, external_starttime)
             logging.debug("finished mapping variables to program...")
             self.local_bnf[BNF_PROGRAM] = [program]
             #print program[program.find('def'):]
