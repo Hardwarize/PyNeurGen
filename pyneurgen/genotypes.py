@@ -27,6 +27,7 @@ import logging
 import random
 import re
 import traceback
+import numpy as np
 
 from pyneurgen.utilities import base10tobase2, base2tobase10
 
@@ -42,7 +43,7 @@ TIMEOUT_PROG_EXECUTE = 1
 
 #DEFAULT_LOG_FILE = 'pyneurgen.log'
 DEFAULT_LOG_FILE = None
-DEFAULT_LOG_LEVEL = logging.DEBUG
+DEFAULT_LOG_LEVEL = logging.INFO
 
 logging.basicConfig(format='%(asctime)s %(message)s',
                     filename=DEFAULT_LOG_FILE,
@@ -65,7 +66,9 @@ class Genotype(object):
 
     def __init__(self, start_gene_length,
                         max_gene_length,
-                        member_no):
+                        member_no,
+                        is_external=False,
+                        rng=None):
         """
         This function initiates the genotype.  It must open with the starting
         gene length and the maximum gene length.  These lengths are the decimal
@@ -84,14 +87,15 @@ class Genotype(object):
         self._extend_genotype = True
         self.starttime = None
         self._timeouts = (0, 0)
-
+        self.rng = rng
         self._gene_length = start_gene_length
         self._max_gene_length = max_gene_length
 
         self.binary_gene = None
         self.decimal_gene = None
-        self._generate_binary_gene(self._gene_length)
-        self.generate_decimal_gene()
+        if not is_external:
+            self._generate_binary_gene(self._gene_length)
+            self.generate_decimal_gene()
 
         self._position = (0, 0)
 
@@ -102,13 +106,7 @@ class Genotype(object):
         This function creates a random set of bits.
 
         """
-
-        geno = []
-        count = 0
-        while count < length * 8:
-            geno.append(str(random.randint(0, 1)))
-            count += 1
-        self.binary_gene = ''.join(geno)
+        self.binary_gene = ''.join(list(self.rng.choice(['0','1'], size=length * 8)))
 
     def set_binary_gene(self, binary_gene):
         """
@@ -269,6 +267,57 @@ class Genotype(object):
                 #""" % (variable, values))
 
         return str(value)
+    
+    def _external_map_variables(self, program, external_starttime=None):
+        """
+        This function looks for a variable in the form of <variable>.  If
+        check_stoplist is True, then there will be a check to determine if it
+        is a run-time variable, and therefor will be resolved later.
+
+        This process runs until all of the variables have been satisfied, or a
+        time limit on the process has been reached.
+
+        """
+        
+        if external_starttime:
+            self.starttime = external_starttime
+        
+        self.errors = []
+        incomplete = True
+        prg_list = re.split(VARIABLE_FORMAT, program)
+        while incomplete:
+            position = 0
+            continue_map = False
+            while position < len(prg_list):
+                item = prg_list[position]
+                if item.strip() == '':
+                    del(prg_list[position])
+                else:
+                    if item[0] == "<" and item[-1] == ">":
+                        #   check stop list
+                        status = True
+                        if status:
+                            prg_list[position] = self.resolve_variable(item)
+                            continue_map = True
+
+                        del(prg_list[position + 1])
+                    position += 1
+
+            program = ''.join(prg_list)
+            prg_list = re.split(VARIABLE_FORMAT, program)
+            elapsed = datetime.now() - self.starttime
+
+            if len(program) > self._max_program_length:
+                #   Runaway process
+                msg = "program length, %s is beyond max program length: %s" % (
+                            len(program), self._max_program_length)
+                logging.debug(msg)
+                logging.debug("program follows:")
+                self.errors.append(msg)
+                continue_map = False
+
+            if continue_map is False:
+                return program
 
     def _map_variables(self, program, check_stoplist, external_starttime=None):
         """
@@ -296,7 +345,7 @@ class Genotype(object):
         
         if external_starttime:
             self.starttime = external_starttime
-
+        
         self.errors = []
         incomplete = True
         prg_list = re.split(VARIABLE_FORMAT, program)
@@ -326,22 +375,22 @@ class Genotype(object):
             elapsed = datetime.now() - self.starttime
 
             #   Reasons to fail the process
+            """
             if check_stoplist:
                 #   Program already running
                 if elapsed.seconds > self._timeouts[TIMEOUT_PROG_EXECUTE]:
                     msg = "elapsed time greater than program timeout"
                     logging.debug(msg)
                     self.errors.append(msg)
-                    raise StandardError(msg)
-                    #continue_map = False
+                    continue_map = False
             else:
                 #   Preprogram
                 if elapsed.seconds > self._timeouts[TIMEOUT_PROG_BUILD]:
                     msg = "elapsed time greater than preprogram timeout"
                     logging.debug(msg)
                     self.errors.append(msg)
-                    raise StandardError(msg)
-                    #continue_map = False
+                    continue_map = False
+            """
 
             if len(program) > self._max_program_length:
                 #   Runaway process
@@ -349,10 +398,8 @@ class Genotype(object):
                             len(program), self._max_program_length)
                 logging.debug(msg)
                 logging.debug("program follows:")
-                #logging.debug(program)
                 self.errors.append(msg)
-                raise StandardError(msg)
-                #continue_map = False
+                continue_map = False
 
             if continue_map is False:
                 return program
@@ -471,14 +518,11 @@ class Genotype(object):
             logging.debug("mapping variables to program...")
             self.local_bnf[BNF_PROGRAM] = [
                     'mapping variables into program failed']
-            program = self._map_variables(self.local_bnf['<S>'][0], True, external_starttime)
+            program = self._external_map_variables(self.local_bnf['<S>'][0],external_starttime)
             logging.debug("finished mapping variables to program...")
             self.local_bnf[BNF_PROGRAM] = [program]
-            #print program[program.find('def'):]
             logging.debug(program)
-            #self._execute_code(program)
             logging.debug("==================================================")
-            return program
         except:
             #traceback.print_exc()
             #a = raw_input("waiting")

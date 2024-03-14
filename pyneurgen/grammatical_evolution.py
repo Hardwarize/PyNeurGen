@@ -102,7 +102,7 @@ class GrammaticalEvolution(object):
         self._wrap = DEFAULT_WRAP
         self._extend_genotype = DEFAULT_EXTEND_GENOTYPE
         self._start_gene_length = DEFAULT_START_GENE_LENGTH
-        self._max_gene_length = DEFAULT_MAX_PROGRAM_LENGTH
+        self._max_gene_length = DEFAULT_MAX_GENE_LENGTH
         self._max_program_length = DEFAULT_MAX_PROGRAM_LENGTH
 
         #   Parameters for overall process
@@ -745,7 +745,7 @@ class GrammaticalEvolution(object):
 
         return self.fitness_list.best_member()
 
-    def create_genotypes(self):
+    def create_genotypes(self, rng):
         """
         This function creates a genotype using the input parameters for each
         member of the population, and transfers operating parameters to the
@@ -757,7 +757,7 @@ class GrammaticalEvolution(object):
         while member_no < self._population_size:
             gene = Genotype(self._start_gene_length,
                         self._max_gene_length,
-                        member_no)
+                        member_no, False,rng)
             #   a local copy is made because variables
             #   can be saved within the local_bnf
             gene.local_bnf = deepcopy(self.bnf)
